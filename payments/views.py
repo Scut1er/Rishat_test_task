@@ -6,8 +6,18 @@ import stripe
 from django.conf import settings
 
 
-# Настройка Stripe
+
 stripe.api_key = settings.STRIPE_SECRET_KEY
+
+
+def home(request):
+    """Главная страница со списком всех товаров"""
+    items = Item.objects.all()
+    context = {
+        'items': items,
+        'STRIPE_PUBLISHABLE_KEY': settings.STRIPE_PUBLISHABLE_KEY,
+    }
+    return render(request, 'payments/home.html', context)
 
 
 def item_detail(request, item_id):
