@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Заказ #{{ order.id }}</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        .order-items {
+            margin: 20px 0;
+        }
+        .order-item {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .item-name {
+            font-weight: bold;
+            font-size: 18px;
+            color: #333;
+        }
+        .item-description {
+            color: #666;
+            margin: 5px 0;
+        }
+        .item-price {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .quantity {
+            color: #007bff;
+            font-weight: bold;
+        }
+        .total-price {
+            font-size: 24px;
+            color: #28a745;
+            font-weight: bold;
+            margin: 20px 0;
+            text-align: right;
+            border-top: 2px solid #ddd;
+            padding-top: 15px;
+        }
+        #buy-button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 18px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            width: 100%;
+        }
+        #buy-button:hover {
+            background-color: #0056b3;
+        }
+        #buy-button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .loading {
+            display: none;
+            margin-top: 10px;
+            color: #666;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Заказ #{{ order.id }}</h1>
+        
+        <div class="order-items">
+            {% for order_item in order.orderitem_set.all %}
+            <div class="order-item">
+                <div class="item-name">{{ order_item.item.name }}</div>
+                <div class="item-description">{{ order_item.item.description }}</div>
+                <div class="item-price">Цена: ${{ order_item.item.price }}</div>
+                <div class="quantity">Количество: {{ order_item.quantity }}</div>
+                <div class="item-price">Итого: ${{ order_item.get_total_price }}</div>
+            </div>
+            {% endfor %}
+        </div>
+        
+        <div class="total-price">Общая сумма: ${{ order.get_total_price }}</div>
+        
+        <button id="buy-button">Оплатить заказ</button>
+        <div class="loading" id="loading">Перенаправление на страницу оплаты...</div>
+    </div>
+
+    <script src="https://js.stripe.com/v3/"></script>
+    <script type="text/javascript">
+        var stripe = Stripe('{{ STRIPE_PUBLISHABLE_KEY }}');
+        var buyButton = document.getElementById('buy-button');
+        var loadingDiv = document.getElementById('loading');
+
+        buyButton.addEventListener('click', function() {
+            buyButton.disabled = true;
+            loadingDiv.style.display = 'block';
+            
+            // Создание новой Checkout Session для заказа
+            fetch('/buy_order/{{ order.id }}/', {method: 'GET'})
+            .then(response => response.json())
+            .then(session => {
+                if (session.error) {
+                    throw new Error(session.error);
+                }
+                // Перенаправление на Stripe Session Checkout
+                return stripe.redirectToCheckout({ sessionId: session.id });
+            })
+            .then(function (result) {
+                if (result.error) {
+                    alert(result.error.message);
+                }
+            })
+            .catch(function(error) {
+                console.error('Error:', error);
+                alert('Произошла ошибка: ' + error.message);
+            })
+            .finally(function() {
+                buyButton.disabled = false;
+                loadingDiv.style.display = 'none';
+            });
+        });
+    </script>
+</body>
+</html> 
